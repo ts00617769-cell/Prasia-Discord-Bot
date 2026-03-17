@@ -8,10 +8,12 @@
 ### ⚡ 超高速星座運勢與塔羅占卜 (SQLite 快取機制)
 開發非同步爬蟲 (aiohttp + BeautifulSoup) 抓取每日運勢，並實作本地端 SQLite 快取邏輯。有效避免對外部網站的重複請求，並解決了繁體中文網頁常見的編碼衝突，將回應時間從 3 秒壓縮至 0.1 秒內。
 <img width="594" height="429" alt="image" src="https://github.com/user-attachments/assets/780a9d11-7510-4381-8fc7-b42b8214d701" />
+<img width="486" height="194" alt="image" src="https://github.com/user-attachments/assets/b8382dbd-0e69-4bb9-90ad-9167241ef28c" />
 
 ### 🧠 100 題互動式心理測驗 (Discord Button UI)
 捨棄傳統的文字輸入，實作 `discord.ui.View` 與動態按鈕 (Buttons)。系統會讀取本地的 `quiz.json` 題庫，並根據「當日日期」透過演算法每天自動輪替題目。測驗結果實作如「悄悄話」般的絕佳隱私體驗。
-<img width="486" height="194" alt="image" src="https://github.com/user-attachments/assets/b8382dbd-0e69-4bb9-90ad-9167241ef28c" />
+<img width="1147" height="250" alt="image" src="https://github.com/user-attachments/assets/11d9f414-4675-4e40-9dc3-4ca0569fec94" />
+
 
 ### 🕒 交叉王 (時空縫隙首領) 排程自動推播
 透過 `discord.ext.tasks` 建立背景常駐排程。系統會自動換算時區，於每日特定的首領重生前，自動發送 Embed 訊息標記全體成員準備集結。
