@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  dc-bot:
+    image: python:3.12-slim
+    container_name: prasia-bot-final
+    restart: always
+    volumes:
+      - /volume1/docker/dc_bot:/app
+    environment:
+      - DISCORD_TOKEN=MTM3NjgxMTYxMjg1MzIzOTk0MQ.GUZfTc.yPUm1eJTSdJXtxj_3xjzOi_oLnIMqbz3c1P6xk
+      - TZ=Asia/Taipei
+    working_dir: /app
+    command: sh -c "pip install --no-cache-dir -r requirements.txt && python bot.py"
