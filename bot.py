@@ -24,7 +24,7 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 
 # ⚠️ 自動提醒頻道 ID
 REMINDER_CHANNEL_ID = 1477964998818140326
-# 🛡️ 請換成你們公會真正的「打寶區」頻道 ID
+# 🛡️ 請換成你們公會真正的「打寶區」頻道 ID 目前用測試頻道
 LOOT_CHANNEL_ID = 1477966312411107493
 
 # 2. 機器人初始化
@@ -446,7 +446,7 @@ async def record_loot(ctx):
         gemini_api_key = os.getenv('GEMINI_API_KEY')
         
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash') 
+        model = genai.GenerativeModel('gemini-2.0-flash')
         
         # 💡 FAE 的精準提示詞：要求 AI 同時抓取左上角地點與中間的廣播
         prompt = """
