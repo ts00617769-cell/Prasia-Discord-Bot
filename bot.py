@@ -446,9 +446,14 @@ async def record_loot(ctx):
         gemini_api_key = os.getenv('GEMINI_API_KEY')
         
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
         
-        # 💡 FAE 的精準提示詞：要求 AI 同時抓取左上角地點與中間的廣播
+        # 🚨 這裡必須跟上面的 genai.configure 對齊！
+        try:
+            model = genai.GenerativeModel('models/gemini-1.5-flash')
+        except:
+            model = genai.GenerativeModel('gemini-1.5-flash')
+
+        # 💡 FAE 的精準提示詞：這些也都要在第一個 try 的縮排內
         prompt = """
         這是一張《波拉西亞戰記》的遊戲截圖。
         1. 找出左上角的地圖名稱（如：被破壞的寺院）。
