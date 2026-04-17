@@ -25,7 +25,7 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 # ⚠️ 自動提醒頻道 ID
 REMINDER_CHANNEL_ID = 1477964998818140326
 # 🛡️ 請換成你們公會真正的「打寶區」頻道 ID 目前用測試頻道
-LOOT_CHANNEL_ID = 1477966312411107493
+LOOT_CHANNEL_ID = 1401827955625299998
 
 # 2. 機器人初始化
 intents = discord.Intents.default()
@@ -468,7 +468,7 @@ async def record_loot(ctx):
         
         print(f"✅ 引擎啟動: {target_model_name}")
         model = genai.GenerativeModel(target_model_name)
-        
+
         prompt = """
         這是一張《波拉西亞戰記》的遊戲截圖。
         1. 找出左上角的地圖名稱（如：被破壞的寺院）。
