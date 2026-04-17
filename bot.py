@@ -463,27 +463,12 @@ async def record_loot(ctx):
         gemini_api_key = os.getenv('GEMINI_API_KEY')
         genai.configure(api_key=gemini_api_key)
 
-        # 1. 診斷可用模型（這會印在 NAS 的 Log 裡方便我們看）
-        print("正在檢查可用模型列表...")
-        available_models = []
-        try:
-            for m in genai.list_models():
-                if 'generateContent' in m.supported_generation_methods:
-                    available_models.append(m.name)
-        except Exception as e:
-            print(f"獲取清單失敗: {e}")
-
-        # 2. 自動選擇最適合的名稱
-        target_model_name = 'gemini-1.5-flash' # 預設
-        for name in available_models:
-            if '1.5-flash' in name:
-                target_model_name = name
-                break
+        # 💡 FAE 精準鎖定：根據 debug 清單，直接指定最新的 2.5 Flash 引擎！
+        target_model_name = 'models/gemini-2.5-flash'
         
-        print(f"✅ 最終決定使用的引擎路徑: {target_model_name}")
+        print(f"✅ 引擎啟動: {target_model_name}")
         model = genai.GenerativeModel(target_model_name)
-
-        # 💡 FAE 的精準提示詞：這些也都要在第一個 try 的縮排內
+        
         prompt = """
         這是一張《波拉西亞戰記》的遊戲截圖。
         1. 找出左上角的地圖名稱（如：被破壞的寺院）。
