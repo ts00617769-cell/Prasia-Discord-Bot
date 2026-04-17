@@ -443,9 +443,10 @@ async def record_loot(ctx):
 
     try:
         image_bytes = await attachment.read()
+        # --- 這裡開始替換原本宣告 model 的部分 ---
         genai.configure(api_key=gemini_api_key)
         
-        # 💡 FAE 的「暴力相容模式」：嘗試所有可能的名稱
+        # 💡 FAE 的暴力解決法：列出所有可能的型號路徑，讓它自己去試
         model_names = [
             'gemini-1.5-flash',
             'models/gemini-1.5-flash',
@@ -457,14 +458,14 @@ async def record_loot(ctx):
         for m_name in model_names:
             try:
                 model = genai.GenerativeModel(m_name)
-                # 測試一下模型是否真的可用
-                print(f"✅ 成功載入模型引擎: {m_name}")
+                # 簡單測試一下這個名字行不行
+                print(f"✅ 成功找到可用模型: {m_name}")
                 break 
             except:
                 continue
         
         if model is None:
-            await loading_msg.edit(content="❌ 無法載入任何 Gemini 模型引擎，請檢查 Google AI Studio 設定。")
+            await loading_msg.edit(content="❌ 無法載入 Gemini 模型，請檢查 Google AI Studio 設定。")
             return
 
         # 💡 FAE 的精準提示詞：這些也都要在第一個 try 的縮排內
