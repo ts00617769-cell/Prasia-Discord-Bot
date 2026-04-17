@@ -408,6 +408,22 @@ async def daily_quiz(ctx):
         await ctx.send("❌ 找不到題庫檔案 (quiz.json)，請聯絡管理員確認系統設定！")
     except Exception as e:
         await ctx.send(f"❌ 讀取題庫發生錯誤：{e}")
+        # --- 指令：系統除錯 (模型名稱快照) ---
+@bot.command(name="debug", help="列出目前 API Key 可用的所有 Gemini 模型。")
+async def debug_models(ctx):
+    try:
+        gemini_api_key = os.getenv('GEMINI_API_KEY')
+        genai.configure(api_key=gemini_api_key)
+        
+        # 取得所有支援產出內容的模型名字
+        models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        
+        if not models:
+            await ctx.send("❌ 找不到任何可用的 Gemini 模型，請檢查 API Key 權限。")
+        else:
+            await ctx.send(f"✅ 你的 API Key 目前可用的模型有：\n```\n" + "\n".join(models) + "\n```")
+    except Exception as e:
+        await ctx.send(f"❌ 診斷失敗：{e}")
 # --- 【AI 視覺打寶系統】 ---
 
 # 初始化打寶資料庫
