@@ -443,30 +443,29 @@ async def record_loot(ctx):
 
     try:
         image_bytes = await attachment.read()
-        # --- 這裡開始替換原本宣告 model 的部分 ---
+        # --- 第一步：取得並配置 API Key ---
+        gemini_api_key = os.getenv('GEMINI_API_KEY')
         genai.configure(api_key=gemini_api_key)
+
+        # 1. 診斷可用模型（這會印在 NAS 的 Log 裡方便我們看）
+        print("正在檢查可用模型列表...")
+        available_models = []
+        try:
+            for m in genai.list_models():
+                if 'generateContent' in m.supported_generation_methods:
+                    available_models.append(m.name)
+        except Exception as e:
+            print(f"獲取清單失敗: {e}")
+
+        # 2. 自動選擇最適合的名稱
+        target_model_name = 'gemini-1.5-flash' # 預設
+        for name in available_models:
+            if '1.5-flash' in name:
+                target_model_name = name
+                break
         
-        # 💡 FAE 的暴力解決法：列出所有可能的型號路徑，讓它自己去試
-        model_names = [
-            'gemini-1.5-flash',
-            'models/gemini-1.5-flash',
-            'gemini-1.5-flash-latest',
-            'models/gemini-1.5-flash-latest'
-        ]
-        
-        model = None
-        for m_name in model_names:
-            try:
-                model = genai.GenerativeModel(m_name)
-                # 簡單測試一下這個名字行不行
-                print(f"✅ 成功找到可用模型: {m_name}")
-                break 
-            except:
-                continue
-        
-        if model is None:
-            await loading_msg.edit(content="❌ 無法載入 Gemini 模型，請檢查 Google AI Studio 設定。")
-            return
+        print(f"✅ 最終決定使用的引擎路徑: {target_model_name}")
+        model = genai.GenerativeModel(target_model_name)
 
         # 💡 FAE 的精準提示詞：這些也都要在第一個 try 的縮排內
         prompt = """
