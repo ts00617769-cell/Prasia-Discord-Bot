@@ -443,15 +443,29 @@ async def record_loot(ctx):
 
     try:
         image_bytes = await attachment.read()
-        gemini_api_key = os.getenv('GEMINI_API_KEY')
-        
         genai.configure(api_key=gemini_api_key)
         
-        # 🚨 這裡必須跟上面的 genai.configure 對齊！
-        try:
-            model = genai.GenerativeModel('models/gemini-1.5-flash')
-        except:
-            model = genai.GenerativeModel('gemini-1.5-flash')
+        # 💡 FAE 的「暴力相容模式」：嘗試所有可能的名稱
+        model_names = [
+            'gemini-1.5-flash',
+            'models/gemini-1.5-flash',
+            'gemini-1.5-flash-latest',
+            'models/gemini-1.5-flash-latest'
+        ]
+        
+        model = None
+        for m_name in model_names:
+            try:
+                model = genai.GenerativeModel(m_name)
+                # 測試一下模型是否真的可用
+                print(f"✅ 成功載入模型引擎: {m_name}")
+                break 
+            except:
+                continue
+        
+        if model is None:
+            await loading_msg.edit(content="❌ 無法載入任何 Gemini 模型引擎，請檢查 Google AI Studio 設定。")
+            return
 
         # 💡 FAE 的精準提示詞：這些也都要在第一個 try 的縮排內
         prompt = """
