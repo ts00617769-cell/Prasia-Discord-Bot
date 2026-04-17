@@ -446,7 +446,7 @@ async def record_loot(ctx):
         gemini_api_key = os.getenv('GEMINI_API_KEY')
         
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         # 💡 FAE 的精準提示詞：要求 AI 同時抓取左上角地點與中間的廣播
         prompt = """
