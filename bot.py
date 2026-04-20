@@ -13,6 +13,8 @@ import re
 import json
 import datetime
 import sqlite3
+import gspread
+from google.oauth2.service_account import Credentials
 
 
 # 💡 關鍵：從外部模組匯入我們分離出去的靜態資料
@@ -492,12 +494,17 @@ async def record_loot(ctx):
         today_str = datetime.datetime.now(pytz.timezone('Asia/Taipei')).strftime('%Y-%m-%d')
         conn = sqlite3.connect('guild_data.db')
         c = conn.cursor()
-        
-        added_list = []
+        added_list = []  # 💡 關鍵：要在迴圈開始前，先準備好空清單
         for entry in data:
+            # 1. 寫入本地資料庫
             c.execute("INSERT INTO loot_history (record_date, record_time, player, item, location) VALUES (?, ?, ?, ?, ?)",
                       (today_str, entry['time'], entry['player'], entry['item'], entry['location']))
+            
+            # 2. 加入準備回傳給 Discord 的訊息清單
             added_list.append(f"🔹 `[{entry['time']}]` **{entry['player']}** 於 **{entry['location']}** 獲得 **{entry['item']}**")
+            
+            # 3. 雲端同步 (確保 service_account.json 已上傳)
+            await sync_to_google_sheets(entry)
             
         conn.commit()
         conn.close()
@@ -531,5 +538,35 @@ async def export_loot(ctx, month_str: str = None):
 
     await ctx.send(f"📊 **{month_str} 公會打寶報表產出完畢！**", file=discord.File(filename))
     os.remove(filename)
+    # --- 新增：Google Sheets 雲端同步功能 ---
+async def sync_to_google_sheets(entry_data):
+    try:
+        # 定義存取範圍
+        scope = ['https://www.googleapis.com/auth/spreadsheets']
+        # 讀取金鑰檔案
+        creds = Credentials.from_service_account_file('service_account.json', scopes=scope)
+        client = gspread.authorize(creds)
+        
+        # 開啟試算表 (使用你提供的 URL)
+        sheet_url = "https://docs.google.com/spreadsheets/d/1yT5EeAVWrusRC22b34G0yJ4yHZiUr2Du/edit?gid=1831826742#gid=1831826742t"
+        spreadsheet = client.open_by_url(sheet_url)
+        
+        # 取得工作表 (預設取第一個分頁，如果不是第一個，要把 0 改成索引值)
+        worksheet = spreadsheet.get_worksheet(0) 
+        
+        # 格式化要寫入的一列資料
+        new_row = [
+            datetime.datetime.now(pytz.timezone('Asia/Taipei')).strftime('%Y-%m-%d'), # 日期
+            entry_data['time'],     # 時間
+            entry_data['player'],   # 玩家
+            entry_data['item'],     # 物品名稱
+            entry_data['location']  # 地點
+        ]
+        
+        # 附加到試算表最後一行
+        worksheet.append_row(new_row)
+        print(f"✅ 雲端同步成功: {entry_data['item']}")
+    except Exception as e:
+        print(f"❌ 雲端同步失敗: {e}")
 # ⚠️ run 永遠在最後一行
 bot.run(TOKEN)
