@@ -26,8 +26,9 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 
 # ⚠️ 自動提醒頻道 ID
 REMINDER_CHANNEL_ID = 1477964998818140326
-# 🛡️ 請換成你們公會真正的「打寶區」頻道 ID 目前用測試頻道
-LOOT_CHANNEL_ID = 1401827955625299998
+# 🛡️ 允許使用打寶指令的頻道清單 (把你的正式頻道 ID 跟測試頻道 ID 都寫進去，用逗號隔開)
+# 記得把 "你的正式頻道ID" 換成真正的數字喔！
+ALLOWED_LOOT_CHANNELS = [1401827955625299998, 1477966312411107493]
 
 # 2. 機器人初始化
 intents = discord.Intents.default()
@@ -447,9 +448,11 @@ setup_loot_db()
 
 @bot.command(name="打寶", help="上傳截圖 + !打寶，AI 自動辨識地點與紫裝。")
 async def record_loot(ctx):
-    # 頻道權限檢查
-    if ctx.channel.id != LOOT_CHANNEL_ID:
-        await ctx.send(f"❌ 這裡不是打寶區，請到 <#{LOOT_CHANNEL_ID}> 上傳喔！", delete_after=5)
+    # 頻道權限檢查 (改成檢查是否在清單內)
+    if ctx.channel.id not in ALLOWED_LOOT_CHANNELS:
+        # 動態生成提示文字，把所有允許的頻道標記出來
+        channels_str = " 或 ".join([f"<#{cid}>" for cid in ALLOWED_LOOT_CHANNELS])
+        await ctx.send(f"❌ 這裡不是打寶區，請到 {channels_str} 上傳喔！", delete_after=5)
         return
 
     # 檢查是否有圖片
