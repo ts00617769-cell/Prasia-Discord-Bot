@@ -354,17 +354,6 @@ async def real_horoscope_cached(ctx, sign: str = None):
     embed.set_footer(text=footer_text)
     
     await ctx.send(content=f"✅ {ctx.author.mention}", embed=embed)
-# --- 互動按鈕類別 (動態生成) ---
-class QuizButton(discord.ui.Button):
-    def __init__(self, key, text, style, result_text):
-        # 顯示在按鈕上的文字，例如 "A. 拔武器直接開紅"
-        super().__init__(label=f"{key}. {text}", style=style)
-        self.result_text = result_text
-
-    async def callback(self, interaction: discord.Interaction):
-        # ephemeral=True：測驗結果像悄悄話一樣，只有按按鈕的人自己看得到！
-        await interaction.response.send_message(self.result_text, ephemeral=True)
-
 # --- 互動按鈕類別 (動態生成：公開廣播版) ---
 class QuizButton(discord.ui.Button):
     def __init__(self, key, text, style, result_text):
@@ -372,11 +361,25 @@ class QuizButton(discord.ui.Button):
         self.result_text = result_text
 
     async def callback(self, interaction: discord.Interaction):
-        # 💡 FAE 修改：拿掉 ephemeral=True，並加入 mention 讓大家知道是誰按的！
+        # 拿掉 ephemeral=True，改為公開發送並 tag 玩家
         public_msg = f"📣 {interaction.user.mention} 選擇了 **{self.label}**！\n👉 **測驗結果**：{self.result_text}"
-        
-        # 直接把結果發送到頻道上，大家都看得到
         await interaction.response.send_message(public_msg)
+
+# --- 視圖類別 (把按鈕裝進去) ---
+class DynamicQuizView(discord.ui.View):
+    def __init__(self, question_data):
+        super().__init__(timeout=None) # 按鈕不限時
+        
+        # 定義四種顏色的按鈕風格，依序套用
+        styles = [discord.ButtonStyle.danger, discord.ButtonStyle.success, 
+                  discord.ButtonStyle.primary, discord.ButtonStyle.secondary]
+        
+        # 根據 JSON 裡的選項，動態把按鈕加到畫面上
+        for i, (key, text) in enumerate(question_data["options"].items()):
+            style = styles[i % len(styles)]
+            result_text = question_data["results"][key]
+            self.add_item(QuizButton(key, text, style, result_text))
+
 
 # --- 12. 指令：每日心理測驗 ---
 @bot.command(name="測驗", help="每日輪替的公會心理測驗！看看你的真實性格。")
