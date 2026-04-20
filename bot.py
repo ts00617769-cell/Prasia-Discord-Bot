@@ -551,7 +551,7 @@ async def sync_to_google_sheets(entry_data):
         client = gspread.authorize(creds)
         
         # 開啟試算表 (使用你提供的 URL)
-        sheet_url = "https://docs.google.com/spreadsheets/d/1yT5EeAVWrusRC22b34G0yJ4yHZiUr2Du/edit?gid=1831826742#gid=1831826742t"
+        sheet_url = "https://docs.google.com/spreadsheets/d/1yT5EeAVWrusRC22b34G0yJ4yHZiUr2Du/edit?gid=1831826742#gid=1831826742"
         spreadsheet = client.open_by_url(sheet_url)
         
         # 取得工作表 (預設取第一個分頁，如果不是第一個，要把 0 改成索引值)
