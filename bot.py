@@ -7,14 +7,12 @@ import datetime
 import pytz
 import json
 import datetime
-import google.generativeai as genai
 import csv
 import re
 import json
 import datetime
 import sqlite3
-import gspread
-from google.oauth2.service_account import Credentials
+
 
 
 # 💡 關鍵：從外部模組匯入我們分離出去的靜態資料
@@ -384,192 +382,24 @@ class DynamicQuizView(discord.ui.View):
             self.add_item(QuizButton(key, text, style, result_text))
 
 
-# --- 12. 指令：每日心理測驗 ---
-@bot.command(name="測驗", help="每日輪替的公會心理測驗！看看你的真實性格。")
-async def daily_quiz(ctx):
+# --- 【高互動隨機心理測驗系統】 ---
+@bot.command(name="測驗", help="隨機抽出一道心理測驗，大家一起來作答！")
+async def random_quiz(ctx):
     try:
-        # 讀取本地題庫
+        # 讀取剛剛更新的大題庫
         with open('quiz.json', 'r', encoding='utf-8') as f:
-            quiz_list = json.load(f)
-            
-        # 💡 每日輪替核心邏輯：用「今天是今年的第幾天」去取餘數
-        day_of_year = datetime.datetime.now().timetuple().tm_yday
-        today_index = day_of_year % len(quiz_list)
-        today_quiz = quiz_list[today_index]
-        
-        # 準備發送的題目面板
-        embed = discord.Embed(
-            title="🔮 波拉西亞每日心理測驗",
-            description=f"**{today_quiz['title']}**\n\n*(請點擊下方最符合你直覺的按鈕，測驗結果只有你自己看得到哦！)*",
-            color=discord.Color.purple()
-        )
-        
-        # 綁定動態按鈕視圖
-        view = DynamicQuizView(today_quiz)
-        await ctx.send(embed=embed, view=view)
+            quiz_data = json.load(f)
 
-    except FileNotFoundError:
-        await ctx.send("❌ 找不到題庫檔案 (quiz.json)，請聯絡管理員確認系統設定！")
+        # 💡 FAE 關鍵修改：使用 random.choice 從題庫中隨機盲抽一題
+        question = random.choice(quiz_data)
+
+        # 把抽到的題目裝進視圖按鈕裡
+        view = DynamicQuizView(question)
+        
+        # 發送測驗到頻道上！
+        await ctx.send(f"🎲 **【每日靈魂拷問】**\n{question['title']}", view=view)
+        
     except Exception as e:
-        await ctx.send(f"❌ 讀取題庫發生錯誤：{e}")
-        # --- 指令：系統除錯 (模型名稱快照) ---
-@bot.command(name="debug", help="列出目前 API Key 可用的所有 Gemini 模型。")
-async def debug_models(ctx):
-    try:
-        gemini_api_key = os.getenv('GEMINI_API_KEY')
-        genai.configure(api_key=gemini_api_key)
-        
-        # 取得所有支援產出內容的模型名字
-        models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        
-        if not models:
-            await ctx.send("❌ 找不到任何可用的 Gemini 模型，請檢查 API Key 權限。")
-        else:
-            await ctx.send(f"✅ 你的 API Key 目前可用的模型有：\n```\n" + "\n".join(models) + "\n```")
-    except Exception as e:
-        await ctx.send(f"❌ 診斷失敗：{e}")
-# --- 【AI 視覺打寶系統】 ---
-
-# 初始化打寶資料庫
-def setup_loot_db():
-    conn = sqlite3.connect('guild_data.db')
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS loot_history
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  record_date TEXT,
-                  record_time TEXT,
-                  player TEXT,
-                  item TEXT,
-                  location TEXT)''')
-    conn.commit()
-    conn.close()
-
-setup_loot_db()
-
-@bot.command(name="打寶", help="上傳截圖 + !打寶，AI 自動辨識地點與紫裝。")
-async def record_loot(ctx):
-    # 頻道權限檢查 (改成檢查是否在清單內)
-    if ctx.channel.id not in ALLOWED_LOOT_CHANNELS:
-        # 動態生成提示文字，把所有允許的頻道標記出來
-        channels_str = " 或 ".join([f"<#{cid}>" for cid in ALLOWED_LOOT_CHANNELS])
-        await ctx.send(f"❌ 這裡不是打寶區，請到 {channels_str} 上傳喔！", delete_after=5)
-        return
-
-    # 檢查是否有圖片
-    if not ctx.message.attachments:
-        await ctx.send(f"❌ {ctx.author.mention} 請同時上傳截圖並輸入 `!打寶`！")
-        return
-
-    attachment = ctx.message.attachments[0]
-    loading_msg = await ctx.send("👁️ **Gemini AI 視覺引擎啟動中**，正在分析截圖內容...")
-
-    try:
-        image_bytes = await attachment.read()
-        # --- 第一步：取得並配置 API Key ---
-        gemini_api_key = os.getenv('GEMINI_API_KEY')
-        genai.configure(api_key=gemini_api_key)
-
-        # 💡 FAE 精準鎖定：根據 debug 清單，直接指定最新的 2.5 Flash 引擎！
-        target_model_name = 'models/gemini-2.5-flash'
-        
-        print(f"✅ 引擎啟動: {target_model_name}")
-        model = genai.GenerativeModel(target_model_name)
-
-        prompt = """
-        這是一張《波拉西亞戰記》的遊戲截圖。
-        1. 找出左上角的地圖名稱（如：被破壞的寺院）。
-        2. 從聊天廣播找出所有獲得「紫色或金色物品」的紀錄（時間、玩家ID、物品）。
-        3. 嚴格以 JSON 格式回傳：[{"time": "時間", "player": "ID", "item": "物品", "location": "地點"}]
-        """
-        
-        image_part = {'mime_type': attachment.content_type, 'data': image_bytes}
-        response = await bot.loop.run_in_executor(None, lambda: model.generate_content([image_part, prompt]))
-        
-        # 解析 AI 回傳的 JSON
-        raw_text = response.text.strip().replace('```json', '').replace('```', '').strip()
-        data = json.loads(raw_text)
-
-        if not data:
-            await loading_msg.edit(content="⚠️ 沒看到紫裝廣播，是不是截圖不夠清楚？")
-            return
-
-        # 寫入 SQLite
-        today_str = datetime.datetime.now(pytz.timezone('Asia/Taipei')).strftime('%Y-%m-%d')
-        conn = sqlite3.connect('guild_data.db')
-        c = conn.cursor()
-        added_list = []  # 💡 關鍵：要在迴圈開始前，先準備好空清單
-        for entry in data:
-            # 1. 寫入本地資料庫
-            c.execute("INSERT INTO loot_history (record_date, record_time, player, item, location) VALUES (?, ?, ?, ?, ?)",
-                      (today_str, entry['time'], entry['player'], entry['item'], entry['location']))
-            
-            # 2. 加入準備回傳給 Discord 的訊息清單
-            added_list.append(f"🔹 `[{entry['time']}]` **{entry['player']}** 於 **{entry['location']}** 獲得 **{entry['item']}**")
-            
-            # 3. 雲端同步 (確保 service_account.json 已上傳)
-            await sync_to_google_sheets(entry)
-            
-        conn.commit()
-        conn.close()
-
-        await loading_msg.edit(content="✅ **AI 辨識成功！已記入公會資產：**\n" + "\n".join(added_list))
-
-    except Exception as e:
-        await loading_msg.edit(content=f"❌ 辨識出錯了... 請確認 Gemini Key 是否正確。({e})")
-
-# --- 【匯出報表功能】 ---
-@bot.command(name="打寶報表", help="匯出當月打寶紀錄。")
-async def export_loot(ctx, month_str: str = None):
-    if not month_str:
-        month_str = datetime.datetime.now(pytz.timezone('Asia/Taipei')).strftime('%Y-%m')
-
-    conn = sqlite3.connect('guild_data.db')
-    c = conn.cursor()
-    c.execute("SELECT record_date, record_time, player, item, location FROM loot_history WHERE record_date LIKE ?", (f"{month_str}%",))
-    rows = c.fetchall()
-    conn.close()
-
-    if not rows:
-        await ctx.send(f"📊 {month_str} 目前尚無紀錄。")
-        return
-
-    filename = f"Loot_Report_{month_str}.csv"
-    with open(filename, 'w', newline='', encoding='utf-8-sig') as f:
-        writer = csv.writer(f)
-        writer.writerow(['日期', '時間', '玩家ID', '物品名稱', '掉落地點'])
-        writer.writerows(rows)
-
-    await ctx.send(f"📊 **{month_str} 公會打寶報表產出完畢！**", file=discord.File(filename))
-    os.remove(filename)
-    # --- 新增：Google Sheets 雲端同步功能 ---
-async def sync_to_google_sheets(entry_data):
-    try:
-        # 定義存取範圍
-        scope = ['https://www.googleapis.com/auth/spreadsheets']
-        # 讀取金鑰檔案
-        creds = Credentials.from_service_account_file('service_account.json', scopes=scope)
-        client = gspread.authorize(creds)
-        
-        # 開啟試算表 (使用你提供的 URL)
-        sheet_url = "https://docs.google.com/spreadsheets/d/1yT5EeAVWrusRC22b34G0yJ4yHZiUr2Du/edit?gid=1831826742#gid=1831826742"
-        spreadsheet = client.open_by_url(sheet_url)
-        
-        # 取得工作表 (預設取第一個分頁，如果不是第一個，要把 0 改成索引值)
-        worksheet = spreadsheet.get_worksheet(0) 
-        
-        # 格式化要寫入的一列資料
-        new_row = [
-            datetime.datetime.now(pytz.timezone('Asia/Taipei')).strftime('%Y-%m-%d'), # 日期
-            entry_data['time'],     # 時間
-            entry_data['player'],   # 玩家
-            entry_data['item'],     # 物品名稱
-            entry_data['location']  # 地點
-        ]
-        
-        # 附加到試算表最後一行
-        worksheet.append_row(new_row)
-        print(f"✅ 雲端同步成功: {entry_data['item']}")
-    except Exception as e:
-        print(f"❌ 雲端同步失敗: {e}")
+        await ctx.send(f"❌ 讀取題庫發生錯誤：`{e}`")
 # ⚠️ run 永遠在最後一行
 bot.run(TOKEN)
